@@ -72,7 +72,6 @@ let countTwo = 0;
 for (let i = 0; i < inputs.length; i++) {
   const opp = obj[inputs[i][0]];
   const condition = inputs[i][1];
-  console.log({ opp, condition, obj: PICKER[condition][opp] });
   countTwo += PICKER[condition][opp];
 }
 
