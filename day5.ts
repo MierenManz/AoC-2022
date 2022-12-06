@@ -1,7 +1,6 @@
 import { TextLineStream } from "https://deno.land/std@0.167.0/streams/text_line_stream.ts";
 const [filePath] = Deno.args;
 
-console.time("setup");
 const handle = await Deno.open(filePath, { read: true });
 // const {body} = await fetch("https://asunaproject.nl/downloads/input.txt")
 const REG = /\s{4}|(\[.{1}\]( |$))/g;
@@ -52,35 +51,62 @@ const lines = handle.readable
   .pipeThrough(lineStream);
 
 const [stackInfo, instructionInfo] = lines.tee();
+const [stackInputs, stackInputs2] = stackInfo.pipeThrough(stackStream).tee();
+const [instructionInputs, instructionInputs2] = instructionInfo.pipeThrough(
+  instructionStream,
+).tee();
 
-const stacks: string[][] = new Array(9).fill(null).map(() => []);
+{
+  const stacks: string[][] = new Array(9).fill(null).map(() => []);
 
-const stackInputs = stackInfo.pipeThrough(stackStream);
-
-stackInputs.getReader()
-for await (const crate of stackInputs) {
-  stacks[crate.stack].push(crate.char);
-}
-
-console.log("Done with setting up stack");
-console.timeEnd("setup");
-
-stacks.forEach((x) => x.reverse());
-const instructionInputs = instructionInfo.pipeThrough(instructionStream);
-
-for await (const instruction of instructionInputs) {
-  for (let i = 0; i < instruction.count; i++) {
-    const crate = stacks[instruction.from].pop()!;
-    stacks[instruction.to].push(crate);
+  for await (const crate of stackInputs) {
+    stacks[crate.stack].push(crate.char);
   }
-  console.log(instruction);
+
+  stacks.forEach((x) => x.reverse());
+
+  for await (const instruction of instructionInputs) {
+    for (let i = 0; i < instruction.count; i++) {
+      const crate = stacks[instruction.from].pop()!;
+      stacks[instruction.to].push(crate);
+    }
+  }
+
+  let result = "";
+
+  for (let i = 0; i < stacks.length; i++) {
+    const stack = stacks[i];
+    result += stack.pop()?.[1] ?? "";
+  }
+  console.log(result);
 }
 
-let result = "";
+{
+ 
+  const stacks: string[][] = new Array(9).fill(null).map(() => []);
 
-for (let i = 0; i < stacks.length; i++) {
-  const stack = stacks[i];
-  result += stack.pop()?.[1] ?? "";
+  for await (const crate of stackInputs2) {
+    stacks[crate.stack].push(crate.char);
+  }
+
+  stacks.forEach((x) => x.reverse()); 
+
+
+  for await (const instruction of instructionInputs2) {
+    const tmp = []
+    for (let i = 0; i < instruction.count; i++) {
+      const crate = stacks[instruction.from].pop()!;
+      // stacks[instruction.to].push(crate);
+      tmp.push(crate);
+    }
+    tmp.reverse().forEach(x => stacks[instruction.to].push(x));
+  }
+
+  let result = "";
+
+  for (let i = 0; i < stacks.length; i++) {
+    const stack = stacks[i];
+    result += stack.pop()?.[1] ?? "";
+  }
+  console.log(result);
 }
-
-console.log(result);
